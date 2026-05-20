@@ -140,9 +140,18 @@ pub fn mix_segments<'py>(
     py: Python<'py>,
     segments: Vec<Bound<'py, PyBytes>>,
     sample_width: i32,
+    positions: Vec<i32>,
 ) -> PyResult<Bound<'py, PyBytes>> {
     if segments.is_empty() {
         return Err(PyValueError::new_err("segments must not be empty"));
+    }
+
+    if segments.len() != positions.len() {
+        return Err(PyValueError::new_err(format!(
+            "'positions' length ({}) must match 'segments' length ({})",
+            positions.len(),
+            segments.len(),
+        )));
     }
 
     if !matches!(sample_width, 1 | 2 | 4) {
@@ -151,37 +160,46 @@ pub fn mix_segments<'py>(
         )));
     }
 
+    let sw = sample_width as usize;
     let slices: Vec<&[u8]> = segments.iter().map(|s| s.as_bytes()).collect();
 
-    for (i, s) in slices.iter().enumerate() {
-        if s.len() % sample_width as usize != 0 {
+    for (i, (s, &pos)) in slices.iter().zip(positions.iter()).enumerate() {
+        if s.len() % sw != 0 {
             return Err(PyValueError::new_err(format!(
                 "segment {i} length is not a multiple of sample_width"
             )));
         }
+        if pos < 0 {
+            return Err(PyValueError::new_err(format!(
+                "position {i} must be non-negative (got {pos})"
+            )));
+        }
+        if (pos as usize) % sw != 0 {
+            return Err(PyValueError::new_err(format!(
+                "position {i} ({pos}) is not a multiple of sample_width"
+            )));
+        }
     }
 
-    let (base_idx, max_len) = slices
+    let total_len = slices
         .iter()
-        .enumerate()
-        .map(|(i, s)| (i, s.len()))
-        .max_by_key(|&(_, len)| len)
+        .zip(positions.iter())
+        .map(|(s, &pos)| pos as usize + s.len())
+        .max()
         .unwrap();
 
-    let output = PyBytes::new_with(py, max_len, |out_buf| {
-        out_buf.copy_from_slice(slices[base_idx]);
+    let output = PyBytes::new_with(py, total_len, |out_buf| {
+        out_buf.fill(0);
 
-        macro_rules! mix_remaining {
+        macro_rules! mix_at {
             ($sample_type:ty, $mix_fn:ident) => {
-                for (i, seg) in slices.iter().enumerate() {
-                    if i == base_idx {
-                        continue;
-                    }
+                for (seg, &pos) in slices.iter().zip(positions.iter()) {
+                    let offset_samples = pos as usize / std::mem::size_of::<$sample_type>();
                     let num_samples = seg.len() / std::mem::size_of::<$sample_type>();
                     let out_slice = unsafe {
                         std::slice::from_raw_parts_mut(
                             out_buf.as_mut_ptr() as *mut $sample_type,
-                            num_samples,
+                            total_len / std::mem::size_of::<$sample_type>(),
                         )
                     };
                     let seg_slice = unsafe {
@@ -191,16 +209,17 @@ pub fn mix_segments<'py>(
                         )
                     };
                     for j in 0..num_samples {
-                        out_slice[j] = $mix_fn(out_slice[j], seg_slice[j]);
+                        out_slice[offset_samples + j] =
+                            $mix_fn(out_slice[offset_samples + j], seg_slice[j]);
                     }
                 }
             };
         }
 
         match sample_width {
-            1 => mix_remaining!(i8, mix_8),
-            2 => mix_remaining!(i16, mix_16),
-            4 => mix_remaining!(i32, mix_32),
+            1 => mix_at!(i8, mix_8),
+            2 => mix_at!(i16, mix_16),
+            4 => mix_at!(i32, mix_32),
             _ => unreachable!(),
         }
 
