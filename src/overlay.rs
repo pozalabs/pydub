@@ -203,10 +203,7 @@ pub fn mix_segments<'py>(
                         )
                     };
                     let seg_slice = unsafe {
-                        std::slice::from_raw_parts(
-                            seg.as_ptr() as *const $sample_type,
-                            num_samples,
-                        )
+                        std::slice::from_raw_parts(seg.as_ptr() as *const $sample_type, num_samples)
                     };
                     for j in 0..num_samples {
                         out_slice[offset_samples + j] =

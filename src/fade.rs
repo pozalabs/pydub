@@ -10,8 +10,11 @@ macro_rules! fade_impl {
 
         if $from_power != 1.0 && $start > 0 {
             let n = $start / sample_size;
-            let src = unsafe { std::slice::from_raw_parts($data.as_ptr() as *const $sample_type, n) };
-            let dst = unsafe { std::slice::from_raw_parts_mut($out.as_mut_ptr() as *mut $sample_type, n) };
+            let src =
+                unsafe { std::slice::from_raw_parts($data.as_ptr() as *const $sample_type, n) };
+            let dst = unsafe {
+                std::slice::from_raw_parts_mut($out.as_mut_ptr() as *mut $sample_type, n)
+            };
             for i in 0..n {
                 dst[i] = $gain_fn(src[i], $from_power);
             }
@@ -22,8 +25,18 @@ macro_rules! fade_impl {
         let fade_samples = ($end - $start) / sample_size;
         if fade_samples > 0 {
             let scale_step = ($to_power - $from_power) / fade_samples as f64;
-            let src = unsafe { std::slice::from_raw_parts($data.as_ptr().add($start) as *const $sample_type, fade_samples) };
-            let dst = unsafe { std::slice::from_raw_parts_mut($out.as_mut_ptr().add($start) as *mut $sample_type, fade_samples) };
+            let src = unsafe {
+                std::slice::from_raw_parts(
+                    $data.as_ptr().add($start) as *const $sample_type,
+                    fade_samples,
+                )
+            };
+            let dst = unsafe {
+                std::slice::from_raw_parts_mut(
+                    $out.as_mut_ptr().add($start) as *mut $sample_type,
+                    fade_samples,
+                )
+            };
             for i in 0..fade_samples {
                 dst[i] = $gain_fn(src[i], $from_power + scale_step * i as f64);
             }
@@ -31,8 +44,12 @@ macro_rules! fade_impl {
 
         if $to_power != 1.0 && $end < $data.len() {
             let n = ($data.len() - $end) / sample_size;
-            let src = unsafe { std::slice::from_raw_parts($data.as_ptr().add($end) as *const $sample_type, n) };
-            let dst = unsafe { std::slice::from_raw_parts_mut($out.as_mut_ptr().add($end) as *mut $sample_type, n) };
+            let src = unsafe {
+                std::slice::from_raw_parts($data.as_ptr().add($end) as *const $sample_type, n)
+            };
+            let dst = unsafe {
+                std::slice::from_raw_parts_mut($out.as_mut_ptr().add($end) as *mut $sample_type, n)
+            };
             for i in 0..n {
                 dst[i] = $gain_fn(src[i], $to_power);
             }
@@ -56,9 +73,15 @@ fn fade_raw(
     out: &mut [u8],
 ) {
     match sample_width {
-        1 => fade_impl!(gain_8, i8, data, start_byte, end_byte, from_power, to_power, out),
-        2 => fade_impl!(gain_16, i16, data, start_byte, end_byte, from_power, to_power, out),
-        4 => fade_impl!(gain_32, i32, data, start_byte, end_byte, from_power, to_power, out),
+        1 => fade_impl!(
+            gain_8, i8, data, start_byte, end_byte, from_power, to_power, out
+        ),
+        2 => fade_impl!(
+            gain_16, i16, data, start_byte, end_byte, from_power, to_power, out
+        ),
+        4 => fade_impl!(
+            gain_32, i32, data, start_byte, end_byte, from_power, to_power, out
+        ),
         _ => unreachable!(),
     }
 }
@@ -81,7 +104,9 @@ pub fn fade_segment<'py>(
 
     let sw = sample_width as usize;
     if data.len() % sw != 0 || start_byte % sw != 0 || end_byte % sw != 0 {
-        return Err(PyValueError::new_err("byte offsets must be aligned to sample_width"));
+        return Err(PyValueError::new_err(
+            "byte offsets must be aligned to sample_width",
+        ));
     }
 
     if start_byte > end_byte || end_byte > data.len() {
@@ -89,7 +114,15 @@ pub fn fade_segment<'py>(
     }
 
     let output = PyBytes::new_with(py, data.len(), |out_buf| {
-        fade_raw(data, sample_width, start_byte, end_byte, from_power, to_power, out_buf);
+        fade_raw(
+            data,
+            sample_width,
+            start_byte,
+            end_byte,
+            from_power,
+            to_power,
+            out_buf,
+        );
         Ok(())
     })?;
 
@@ -120,7 +153,10 @@ mod tests {
 
     #[test]
     fn test_8bit_linear() {
-        let data: Vec<u8> = vec![100i8, 100, 100, 100].iter().map(|s| *s as u8).collect();
+        let data: Vec<u8> = vec![100i8, 100, 100, 100]
+            .iter()
+            .map(|s| *s as u8)
+            .collect();
         let out = apply_fade(&data, 1, 0, data.len(), 0.0, 1.0);
         let samples: Vec<i8> = out.iter().map(|b| *b as i8).collect();
         assert_eq!(samples, [0, 25, 50, 75]);
