@@ -121,3 +121,34 @@ def test_different_lengths_audiosegment():
     b = AudioSegment.silent(duration=100)
     result = AudioSegment.mix(a, b)
     assert len(result) == len(a)
+
+
+def test_mix_with_position_match_overlay_chain():
+    a = AudioSegment.silent(duration=200)
+    b = AudioSegment.silent(duration=100)
+    c = AudioSegment.silent(duration=100)
+
+    mixed = AudioSegment.mix(a, (b, 50), (c, 100))
+    overlaid = a.overlay(b, position=50).overlay(c, position=100)
+
+    assert mixed.raw_data == overlaid.raw_data
+
+
+def test_position_extend_output_beyond_longest_segment():
+    a = AudioSegment.silent(duration=100)
+    b = AudioSegment.silent(duration=100)
+
+    result = AudioSegment.mix(a, (b, 150))
+
+    assert len(result) == 250
+
+
+def test_all_zero_positions_match_plain_mix():
+    a = AudioSegment.silent(duration=100)
+    b = AudioSegment.silent(duration=100)
+    c = AudioSegment.silent(duration=50)
+
+    with_positions = AudioSegment.mix((a, 0), (b, 0), (c, 0))
+    without_positions = AudioSegment.mix(a, b, c)
+
+    assert with_positions.raw_data == without_positions.raw_data
