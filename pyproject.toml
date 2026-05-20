@@ -1,6 +1,6 @@
 [project]
 name = "pozalabs-pydub"
-version = "0.41.0"
+version = "0.42.0"
 description = "Manipulate audio with an simple and easy high level interface (Pozalabs fork)"
 license = "MIT"
 authors = [{ name = "sunwoong", email = "sunwoong@pozalabs.com" }]

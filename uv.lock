@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-13T05:51:15.957937Z"
+exclude-newer = "2026-05-13T05:57:09.124391Z"
 exclude-newer-span = "P7D"
 
 [[package]]
@@ -386,7 +386,7 @@ wheels = [
 
 [[package]]
 name = "pozalabs-pydub"
-version = "0.41.0"
+version = "0.42.0"
 source = { editable = "." }
 dependencies = [
     { name = "audioop-lts", marker = "python_full_version >= '3.13'" },
