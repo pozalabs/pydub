@@ -20,21 +20,21 @@ def _reference_mix(segments, sample_width):
 def test_8bit_two_segments():
     a = make_8bit(10, 20, 30)
     b = make_8bit(5, 10, 15)
-    result = _pydub_core.mix_segments([a, b], 1)
+    result = _pydub_core.mix_segments([a, b], 1, [0, 0])
     assert result == _reference_mix([a, b], 1)
 
 
 def test_16bit_two_segments():
     a = make_16bit(1000, 2000, 3000)
     b = make_16bit(100, 200, 300)
-    result = _pydub_core.mix_segments([a, b], 2)
+    result = _pydub_core.mix_segments([a, b], 2, [0, 0])
     assert result == _reference_mix([a, b], 2)
 
 
 def test_32bit_two_segments():
     a = make_32bit(100000, 200000, 300000)
     b = make_32bit(10000, 20000, 30000)
-    result = _pydub_core.mix_segments([a, b], 4)
+    result = _pydub_core.mix_segments([a, b], 4, [0, 0])
     assert result == _reference_mix([a, b], 4)
 
 
@@ -42,14 +42,14 @@ def test_three_or_more_segments():
     a = make_16bit(1000, 2000, 3000)
     b = make_16bit(100, 200, 300)
     c = make_16bit(10, 20, 30)
-    result = _pydub_core.mix_segments([a, b, c], 2)
+    result = _pydub_core.mix_segments([a, b, c], 2, [0, 0, 0])
     assert result == _reference_mix([a, b, c], 2)
 
 
 def test_different_lengths():
     a = make_16bit(1000, 2000, 3000, 4000)
     b = make_16bit(100, 200)
-    result = _pydub_core.mix_segments([a, b], 2)
+    result = _pydub_core.mix_segments([a, b], 2, [0, 0])
     expected = _reference_mix([a, b], 2)
     assert result == expected
     assert len(result) == len(a)
@@ -59,7 +59,7 @@ def test_different_lengths_three_segments():
     a = make_16bit(1000, 2000)
     b = make_16bit(100, 200, 300, 400)
     c = make_16bit(10, 20, 30)
-    result = _pydub_core.mix_segments([a, b, c], 2)
+    result = _pydub_core.mix_segments([a, b, c], 2, [0, 0, 0])
     expected = _reference_mix([a, b, c], 2)
     assert result == expected
     assert len(result) == len(b)
@@ -68,33 +68,33 @@ def test_different_lengths_three_segments():
 def test_saturation_clamp_8bit():
     a = make_8bit(120, -120)
     b = make_8bit(120, -120)
-    result = _pydub_core.mix_segments([a, b], 1)
+    result = _pydub_core.mix_segments([a, b], 1, [0, 0])
     assert result == _reference_mix([a, b], 1)
 
 
 def test_saturation_clamp_16bit():
     a = make_16bit(32000, -32000)
     b = make_16bit(32000, -32000)
-    result = _pydub_core.mix_segments([a, b], 2)
+    result = _pydub_core.mix_segments([a, b], 2, [0, 0])
     assert result == _reference_mix([a, b], 2)
 
 
 def test_saturation_clamp_32bit():
     a = make_32bit(2147483000, -2147483000)
     b = make_32bit(2147483000, -2147483000)
-    result = _pydub_core.mix_segments([a, b], 4)
+    result = _pydub_core.mix_segments([a, b], 4, [0, 0])
     assert result == _reference_mix([a, b], 4)
 
 
 def test_empty_list_raise_error():
     with pytest.raises(ValueError):
-        _pydub_core.mix_segments([], 2)
+        _pydub_core.mix_segments([], 2, [])
 
 
 def test_invalid_sample_width_raise_error():
     a = make_16bit(1000)
     with pytest.raises(ValueError):
-        _pydub_core.mix_segments([a], 3)
+        _pydub_core.mix_segments([a], 3, [0])
 
 
 def test_two_segments_match_overlay():

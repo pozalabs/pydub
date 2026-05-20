@@ -231,18 +231,31 @@ class AudioSegment:
         )
 
     @classmethod
-    def mix(cls, *segs: Self) -> Self:
+    def mix(cls, *segs: Self | tuple[Self, int]) -> Self:
         if not segs:
             raise ValueError("At least one AudioSegment is required")
-        if len(segs) == 1:
-            return segs[0]
 
-        synced = cls._sync(*segs)
+        segments: list[Self] = []
+        positions_ms: list[int] = []
+        for seg in segs:
+            if isinstance(seg, tuple):
+                segments.append(seg[0])
+                positions_ms.append(seg[1])
+            else:
+                segments.append(seg)
+                positions_ms.append(0)
+
+        if len(segments) == 1 and positions_ms[0] == 0:
+            return segments[0]
+
+        synced = cls._sync(*segments)
+        ref = synced[0]
         result = _pydub_core.mix_segments(
             [seg.raw_data for seg in synced],
-            synced[0].sample_width,
+            ref.sample_width,
+            [ref._ms_to_byte_offset(ms=pos) for pos in positions_ms],
         )
-        return synced[0]._spawn(data=result)
+        return ref._spawn(data=result)
 
     @classmethod
     def from_file(
