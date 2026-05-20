@@ -9,6 +9,7 @@ def overlay_segments(
 def mix_segments(
     segments: list[bytes],
     sample_width: int,
+    positions: list[int],
 ) -> bytes: ...
 def fade_segment(
     data: bytes,
