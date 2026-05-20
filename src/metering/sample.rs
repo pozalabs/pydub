@@ -34,12 +34,7 @@ impl Sample for i32 {
 }
 
 pub(crate) unsafe fn cast_samples<T: Sample>(data: &[u8]) -> &[T] {
-    unsafe {
-        std::slice::from_raw_parts(
-            data.as_ptr() as *const T,
-            data.len() / size_of::<T>(),
-        )
-    }
+    unsafe { std::slice::from_raw_parts(data.as_ptr() as *const T, data.len() / size_of::<T>()) }
 }
 
 pub(crate) fn validate_data(data: &[u8], sample_width: u8) -> PyResult<()> {
