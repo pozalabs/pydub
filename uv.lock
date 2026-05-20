@@ -6,6 +6,10 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 
+[options]
+exclude-newer = "2026-05-13T05:51:15.957937Z"
+exclude-newer-span = "P7D"
+
 [[package]]
 name = "audioop-lts"
 version = "0.2.2"
