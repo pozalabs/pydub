@@ -189,41 +189,44 @@ pub fn mix_segments<'py>(
         .unwrap();
 
     let output = PyBytes::new_with(py, total_len, |out_buf| {
-        out_buf.fill(0);
-
-        macro_rules! mix_at {
-            ($sample_type:ty, $mix_fn:ident) => {
-                for (seg, &pos) in slices.iter().zip(positions.iter()) {
-                    let offset_samples = pos as usize / std::mem::size_of::<$sample_type>();
-                    let num_samples = seg.len() / std::mem::size_of::<$sample_type>();
-                    let out_slice = unsafe {
-                        std::slice::from_raw_parts_mut(
-                            out_buf.as_mut_ptr() as *mut $sample_type,
-                            total_len / std::mem::size_of::<$sample_type>(),
-                        )
-                    };
-                    let seg_slice = unsafe {
-                        std::slice::from_raw_parts(seg.as_ptr() as *const $sample_type, num_samples)
-                    };
-                    for j in 0..num_samples {
-                        out_slice[offset_samples + j] =
-                            $mix_fn(out_slice[offset_samples + j], seg_slice[j]);
-                    }
-                }
-            };
-        }
-
-        match sample_width {
-            1 => mix_at!(i8, mix_8),
-            2 => mix_at!(i16, mix_16),
-            4 => mix_at!(i32, mix_32),
-            _ => unreachable!(),
-        }
-
+        mix_segments_raw(out_buf, &slices, &positions, sw);
         Ok(())
     })?;
 
     Ok(output)
+}
+
+fn mix_segments_raw(out_buf: &mut [u8], slices: &[&[u8]], positions: &[i32], sample_width: usize) {
+    out_buf.fill(0);
+
+    macro_rules! mix_at {
+        ($sample_type:ty, $mix_fn:ident) => {
+            for (seg, &pos) in slices.iter().zip(positions.iter()) {
+                let offset_samples = pos as usize / std::mem::size_of::<$sample_type>();
+                let num_samples = seg.len() / std::mem::size_of::<$sample_type>();
+                let out_slice = unsafe {
+                    std::slice::from_raw_parts_mut(
+                        out_buf.as_mut_ptr() as *mut $sample_type,
+                        out_buf.len() / std::mem::size_of::<$sample_type>(),
+                    )
+                };
+                let seg_slice = unsafe {
+                    std::slice::from_raw_parts(seg.as_ptr() as *const $sample_type, num_samples)
+                };
+                for j in 0..num_samples {
+                    out_slice[offset_samples + j] =
+                        $mix_fn(out_slice[offset_samples + j], seg_slice[j]);
+                }
+            }
+        };
+    }
+
+    match sample_width {
+        1 => mix_at!(i8, mix_8),
+        2 => mix_at!(i16, mix_16),
+        4 => mix_at!(i32, mix_32),
+        _ => unreachable!(),
+    }
 }
 
 #[cfg(test)]
