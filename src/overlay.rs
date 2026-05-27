@@ -199,9 +199,13 @@ pub fn mix_segments<'py>(
 fn mix_segments_raw(out_buf: &mut [u8], slices: &[&[u8]], positions: &[i32], sample_width: usize) {
     out_buf.fill(0);
 
+    let first_pos = positions[0] as usize;
+    let first_seg = slices[0];
+    out_buf[first_pos..first_pos + first_seg.len()].copy_from_slice(first_seg);
+
     macro_rules! mix_at {
         ($sample_type:ty, $mix_fn:ident) => {
-            for (seg, &pos) in slices.iter().zip(positions.iter()) {
+            for (seg, &pos) in slices[1..].iter().zip(positions[1..].iter()) {
                 let offset_samples = pos as usize / std::mem::size_of::<$sample_type>();
                 let num_samples = seg.len() / std::mem::size_of::<$sample_type>();
                 let out_slice = unsafe {
